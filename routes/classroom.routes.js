@@ -6,20 +6,21 @@ const {
     joinClassroom,
     getClassroomById
 } = require('../controllers/classroom.controller');
-const protect = require('../middlewares/auth.middleware');
-const { isTeacher, isStudent, isTeacherOrStudent } = require('../middlewares/role.middleware');
+const { protect } = require('../middlewares/auth.middleware'); // Changed to import the named export
 
 // All routes are protected
 router.use(protect);
 
-// Routes that require teacher role
-router.post('/', isTeacher, createClassroom);
+// Create classroom (anyone can create)
+router.post('/', createClassroom);
 
-// Routes that require student role
-router.post('/join', isStudent, joinClassroom);
+// Join classroom
+router.post('/join', joinClassroom);
 
-// Routes accessible by both teachers and students
-router.get('/my', isTeacherOrStudent, getMyClassrooms);
-router.get('/:id', isTeacherOrStudent, getClassroomById);
+// Get user's classrooms
+router.get('/my', getMyClassrooms);
+
+// Get specific classroom
+router.get('/:id', getClassroomById);
 
 module.exports = router;

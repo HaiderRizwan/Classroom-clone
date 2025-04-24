@@ -5,7 +5,8 @@ const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, 'Name is required'],
-        trim: true
+        trim: true,
+        minlength: [2, 'Name must be at least 2 characters']
     },
     email: {
         type: String,
@@ -19,11 +20,6 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Password is required'],
         minlength: [6, 'Password must be at least 6 characters']
-    },
-    role: {
-        type: String,
-        enum: ['teacher', 'student'],
-        required: [true, 'Role is required']
     },
     createdAt: {
         type: Date,

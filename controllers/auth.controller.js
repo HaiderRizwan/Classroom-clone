@@ -6,7 +6,15 @@ const generateToken = require('../utils/generateToken');
 // @access  Public
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        // Destructure at the correct level
+        const { name, email, password } = req.body;
+
+        // Validate required fields
+        if (!name || !email || !password) {
+            return res.status(400).json({ 
+                message: 'Please provide all required fields' 
+            });
+        }
 
         // Check if user exists
         const userExists = await User.findOne({ email });
@@ -14,12 +22,11 @@ const registerUser = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Create user
+        // Create user with validated data
         const user = await User.create({
-            name,
-            email,
-            password,
-            role
+            name: name.toString().trim(),
+            email: email.toString().toLowerCase().trim(),
+            password: password.toString()
         });
 
         if (user) {
@@ -27,13 +34,23 @@ const registerUser = async (req, res) => {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role,
-                token: generateToken(user._id, user.role)
+                token: generateToken(user._id)
             });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error during registration' });
+        console.error('Registration error:', error);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                message: 'Validation Error', 
+                errors: Object.values(error.errors).map(err => ({
+                    field: err.path,
+                    message: err.message
+                }))
+            });
+        }
+        res.status(500).json({ 
+            message: 'Server error during registration'
+        });
     }
 };
 
@@ -70,14 +87,13 @@ const loginUser = async (req, res) => {
 const getUserProfile = async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
-        if (user) {
-            res.json(user);
-        } else {
-            res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
+        res.json(user);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error while fetching profile' });
+        console.error('Get user profile error:', error);
+        res.status(500).json({ message: 'Server error getting user profile' });
     }
 };
 

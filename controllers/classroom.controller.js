@@ -33,18 +33,19 @@ const createClassroom = async (req, res) => {
 // @access  Private
 const getMyClassrooms = async (req, res) => {
     try {
-        let classrooms;
-        if (req.user.role === 'teacher') {
-            classrooms = await Classroom.find({ teacher: req.user._id })
-                .populate('teacher', 'name email')
-                .populate('students', 'name email');
-        } else {
-            classrooms = await Classroom.find({ students: req.user._id })
-                .populate('teacher', 'name email')
-                .populate('students', 'name email');
-        }
+        // Get classrooms where user is either teacher or student
+        const teachingClassrooms = await Classroom.find({ teacher: req.user._id })
+            .populate('teacher', 'name email')
+            .populate('students', 'name email');
+            
+        const enrolledClassrooms = await Classroom.find({ students: req.user._id })
+            .populate('teacher', 'name email')
+            .populate('students', 'name email');
 
-        res.json(classrooms);
+        res.json({
+            teaching: teachingClassrooms,
+            enrolled: enrolledClassrooms
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error while fetching classrooms' });

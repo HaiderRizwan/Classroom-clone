@@ -6,16 +6,13 @@ const {
     updateComment,
     deleteComment
 } = require('../controllers/comment.controller');
-const protect = require('../middlewares/auth.middleware');
+const { protect } = require('../middlewares/auth.middleware');
 const { isTeacherOrStudent } = require('../middlewares/role.middleware');
 
-// All routes are protected
-router.use(protect);
-
-// Routes accessible by both teachers and students
-router.post('/classroom/:classroomId', isTeacherOrStudent, createComment);
-router.get('/classroom/:classroomId', isTeacherOrStudent, getClassroomComments);
-router.put('/:id', isTeacherOrStudent, updateComment);
-router.delete('/:id', isTeacherOrStudent, deleteComment);
+// Individual route protection instead of global
+router.post('/classroom/:classroomId', protect, isTeacherOrStudent, createComment);
+router.get('/classroom/:classroomId', protect, isTeacherOrStudent, getClassroomComments);
+router.put('/:id', protect, isTeacherOrStudent, updateComment);
+router.delete('/:id', protect, isTeacherOrStudent, deleteComment);
 
 module.exports = router;
