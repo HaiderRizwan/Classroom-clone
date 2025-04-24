@@ -1,55 +1,46 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
 
-// Import routes
-const authRoutes = require('./routes/auth.routes');
-const classroomRoutes = require('./routes/classroom.routes');
-const assignmentRoutes = require('./routes/assignment.routes');
-const commentRoutes = require('./routes/comment.routes');
-
 // Initialize Express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
-
 // Middleware
-app.use(cors());
 app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
+
+// CORS Configuration
+app.use(cors({
+    origin: process.env.NODE_ENV === 'production' 
+        ? process.env.FRONTEND_URL 
+        : 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/classroom-clone')
+    .then(() => console.log('Connected to MongoDB'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1);
+    });
 
 // Routes
-app.get('/', (req, res) => {
-    res.send('Google Classroom Clone API is running...');
-});
-
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/classrooms', classroomRoutes);
-app.use('/api/assignments', assignmentRoutes);
-app.use('/api/comments', commentRoutes);
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/classrooms', require('./routes/classroom.routes'));
+app.use('/api/assignments', require('./routes/assignment.routes'));
+app.use('/api/comments', require('./routes/comment.routes'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({
-        message: err.message || 'Something went wrong!',
-        stack: process.env.NODE_ENV === 'development' ? err.stack : null
-    });
-});
-
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ message: 'Route not found' });
+    res.status(500).json({ message: 'Something went wrong!' });
 });
 
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
