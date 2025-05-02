@@ -94,22 +94,50 @@ const getClassroomAssignments = async (req, res) => {
 // @access  Private/Student
 const submitAssignment = async (req, res) => {
     try {
-        const { fileUrl } = req.body;
         const assignmentId = req.params.id;
+        console.log('Attempting to submit assignment:', assignmentId);
+        console.log('User ID:', req.user._id);
+        
+        // Check if files were uploaded
+        if (!req.files || req.files.length === 0) {
+            console.log('No files uploaded');
+            return res.status(400).json({ message: 'Please upload at least one file' });
+        }
+
+        console.log('Files received:', req.files.map(f => f.originalname));
 
         const assignment = await Assignment.findById(assignmentId);
         if (!assignment) {
+            console.log('Assignment not found:', assignmentId);
             return res.status(404).json({ message: 'Assignment not found' });
         }
 
+        console.log('Assignment found:', assignment._id);
+        console.log('Classroom ID:', assignment.classroom);
+
         // Check if assignment is past due date
         if (new Date() > new Date(assignment.dueDate)) {
+            console.log('Assignment past due date');
             return res.status(400).json({ message: 'Assignment submission period has ended' });
         }
 
-        // Check if student is in the classroom
+        // Ensure student belongs to the classroom
         const classroom = await Classroom.findById(assignment.classroom);
-        if (!classroom.students.includes(req.user._id)) {
+        if (!classroom) {
+            console.log('Classroom not found:', assignment.classroom);
+            return res.status(404).json({ message: 'Classroom not found' });
+        }
+        
+        console.log('Classroom found:', classroom._id);
+        console.log('Classroom students:', classroom.students);
+        
+        const isStudent = classroom.students.some(
+            studentId => studentId.toString() === req.user._id.toString()
+        );
+        
+        console.log('Is student authorized:', isStudent);
+        
+        if (!isStudent) {
             return res.status(403).json({ message: 'Not authorized to submit to this assignment' });
         }
 
@@ -118,21 +146,42 @@ const submitAssignment = async (req, res) => {
             submission => submission.student.toString() === req.user._id.toString()
         );
 
+        console.log('Existing submission:', existingSubmission);
+
+        // Process file uploads
+        const fileUrls = req.files.map(file => file.path);
+        console.log('File URLs:', fileUrls);
+
         if (existingSubmission) {
-            return res.status(400).json({ message: 'You have already submitted this assignment' });
+            // Update existing submission
+            existingSubmission.fileUrls = fileUrls;
+            existingSubmission.submittedAt = Date.now();
+            console.log('Updated existing submission');
+        } else {
+            // Create new submission
+            assignment.submissions.push({
+                student: req.user._id,
+                fileUrls: fileUrls,
+                submittedAt: Date.now()
+            });
+            console.log('Created new submission');
         }
 
-        assignment.submissions.push({
-            student: req.user._id,
-            fileUrl
-        });
-
         await assignment.save();
-
-        res.json(assignment);
+        console.log('Assignment saved successfully');
+        
+        res.status(200).json({ 
+            success: true, 
+            message: 'Assignment submitted successfully',
+            submission: existingSubmission || assignment.submissions[assignment.submissions.length - 1]
+        });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error while submitting assignment' });
+        console.error('Error in submitAssignment:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            message: 'Server error while submitting assignment',
+            error: error.message 
+        });
     }
 };
 

@@ -16,6 +16,14 @@ const commentSchema = new mongoose.Schema({
         required: [true, 'Comment content is required'],
         trim: true
     },
+    announcement: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Announcement'
+    },
+    assignment: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Assignment'
+    },
     parentComment: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Comment',
@@ -35,8 +43,11 @@ const commentSchema = new mongoose.Schema({
     }
 });
 
-// Update the updatedAt timestamp before saving
+// Add validation to ensure either announcement or assignment is set
 commentSchema.pre('save', function(next) {
+    if (!this.announcement && !this.assignment) {
+        next(new Error('Comment must be associated with either an announcement or assignment'));
+    }
     this.updatedAt = Date.now();
     next();
 });

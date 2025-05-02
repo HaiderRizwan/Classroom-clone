@@ -1,18 +1,27 @@
 const Comment = require('../models/comment.model');
 const Classroom = require('../models/classroom.model');
+const Announcement = require('../models/announcement.model');
+const Assignment = require('../models/assignment.model');
 
 // @desc    Create a new comment
 // @route   POST /api/comments/classroom/:classroomId
 // @access  Private
 const createComment = async (req, res) => {
     try {
-        const { content, parentCommentId } = req.body;
+        const { content, parentCommentId, itemId, itemType } = req.body;
         const classroomId = req.params.classroomId;
 
         // Validate required content
         if (!content || content.trim().length === 0) {
             return res.status(400).json({
                 message: 'Comment content is required'
+            });
+        }
+
+        // Validate item type
+        if (!itemType || !['announcement', 'assignment'].includes(itemType)) {
+            return res.status(400).json({
+                message: 'Invalid item type. Must be either "announcement" or "assignment"'
             });
         }
 
@@ -31,10 +40,23 @@ const createComment = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to comment in this classroom' });
         }
 
+        // Verify the item exists
+        let item;
+        if (itemType === 'announcement') {
+            item = await Announcement.findById(itemId);
+        } else {
+            item = await Assignment.findById(itemId);
+        }
+
+        if (!item) {
+            return res.status(404).json({ message: `${itemType} not found` });
+        }
+
         const commentData = {
             classroom: classroomId,
             user: req.user._id,
-            content
+            content,
+            [itemType]: itemId // dynamically set either announcement or assignment
         };
 
         // If this is a reply to another comment
@@ -63,12 +85,19 @@ const createComment = async (req, res) => {
     }
 };
 
-// @desc    Get all comments for a classroom
-// @route   GET /api/comments/classroom/:classroomId
+// @desc    Get all comments for a specific item in a classroom
+// @route   GET /api/comments/classroom/:classroomId/:itemType/:itemId
 // @access  Private
-const getClassroomComments = async (req, res) => {
+const getItemComments = async (req, res) => {
     try {
-        const classroomId = req.params.classroomId;
+        const { classroomId, itemType, itemId } = req.params;
+
+        // Validate item type
+        if (!['announcement', 'assignment'].includes(itemType)) {
+            return res.status(400).json({
+                message: 'Invalid item type. Must be either "announcement" or "assignment"'
+            });
+        }
 
         // Verify classroom exists and user has access
         const classroom = await Classroom.findById(classroomId);
@@ -85,9 +114,10 @@ const getClassroomComments = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized to view comments in this classroom' });
         }
 
-        // Get only top-level comments (no parent comment)
+        // Get only top-level comments for the specific item
         const comments = await Comment.find({
             classroom: classroomId,
+            [itemType]: itemId,
             parentComment: null
         })
         .populate('user', 'name email')
@@ -184,7 +214,7 @@ const deleteComment = async (req, res) => {
 
 module.exports = {
     createComment,
-    getClassroomComments,
+    getItemComments,
     updateComment,
     deleteComment
 };
