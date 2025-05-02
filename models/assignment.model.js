@@ -1,66 +1,62 @@
 const mongoose = require('mongoose');
 
-const submissionSchema = new mongoose.Schema({
-    student: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    fileUrl: {
-        type: String,
-        required: true
-    },
-    submittedAt: {
-        type: Date,
-        default: Date.now
-    },
-    grade: {
-        type: Number,
-        min: 0,
-        max: 100
-    },
-    feedback: {
-        type: String
-    }
-});
-
 const assignmentSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: [true, 'Assignment title is required'],
-        trim: true
+        required: [true, 'Please provide a title for the assignment']
     },
     description: {
         type: String,
-        required: [true, 'Assignment description is required'],
-        trim: true
+        required: [true, 'Please provide a description for the assignment']
     },
+    dueDate: {
+        type: Date,
+        required: [true, 'Please provide a due date for the assignment']
+    },
+    fileUrls: [{
+        type: String
+    }],
     classroom: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Classroom',
         required: true
     },
-    createdBy: {
+    teacher: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    dueDate: {
-        type: Date,
-        required: true
-    },
-    points: {
+    submissions: [{
+        student: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        fileUrls: [{
+            type: String
+        }],
+        submittedAt: {
+            type: Date,
+            default: Date.now
+        },
+        grade: {
+            type: Number,
+            min: 0,
+            max: 100
+        },
+        feedback: {
+            type: String
+        }
+    }],
+    maxPoints: {
         type: Number,
-        required: true,
-        min: 0
-    },
-    submissions: [submissionSchema],
-    createdAt: {
-        type: Date,
-        default: Date.now
+        default: 100
     }
+}, {
+    timestamps: true
 });
 
-const Assignment = mongoose.model('Assignment', assignmentSchema);
+// Add index for faster queries
+assignmentSchema.index({ classroom: 1, dueDate: -1 });
 
-module.exports = Assignment;
+module.exports = mongoose.model('Assignment', assignmentSchema);

@@ -1,8 +1,23 @@
 const Classroom = require('../models/classroom.model');
+const Assignment = require('../models/assignment.model');
 
 const isTeacher = async (req, res, next) => {
     try {
-        const classroom = await Classroom.findById(req.params.classroomId);
+        let classroom;
+        
+        // If we have a classroomId parameter, use that directly
+        if (req.params.classroomId) {
+            classroom = await Classroom.findById(req.params.classroomId);
+        } 
+        // If we have an assignment ID, get the classroom through the assignment
+        else if (req.params.id) {
+            const assignment = await Assignment.findById(req.params.id);
+            if (!assignment) {
+                return res.status(404).json({ message: 'Assignment not found' });
+            }
+            classroom = await Classroom.findById(assignment.classroom);
+        }
+        
         if (!classroom) {
             return res.status(404).json({ message: 'Classroom not found' });
         }
@@ -12,6 +27,7 @@ const isTeacher = async (req, res, next) => {
         }
         next();
     } catch (error) {
+        console.error('Error in isTeacher middleware:', error);
         next(error);
     }
 };
